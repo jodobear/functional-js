@@ -38,7 +38,7 @@ addArrayElems([1, 2]); //=> 3
 ```
 Functions-as-abstraction allow you to fulfil the following:
 > _Make it run, make it right, make it fast_. - Butler Lampson's maxim in the UNIX community.
-> 
+>
 > _Make it run, then make it right, then make it fast_. - Kent Beck's mantra in TDD.
 
 - Functions that always return a boolean value are called _predicates_
