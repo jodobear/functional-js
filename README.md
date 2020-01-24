@@ -1,6 +1,6 @@
 # Functional JS
 
-Notes from the the book by Michael Fogus
+Learning functional programming using JS from the the book by Michael Fogus
 
 ## Book Conventions
 
@@ -20,28 +20,7 @@ Notes from the the book by Michael Fogus
 - Constant width(Mono) bold - commands or text to be typed.
 - Constant width(Mono) italic - replaced with values by user or determined by context.
 
-## Ch 01 Introducing Functional JS
 
-- `apply`, `call`, arguments together make JS extremely flexible.
-- `splat` a fn that takes a function and returns another function that takes an array and calls the og fn with apply, so it's elements serve as its arguments:
-
-```js
-function splat(fun) {
-  return function(array) {
-    return fun.apply(null, array);
-  };
-};
-
-const addArrayElems = splat(function(x, y) { return x + y });
-
-addArrayElems([1, 2]); //=> 3
-```
-Functions-as-abstraction allow you to fulfil the following:
-> _Make it run, make it right, make it fast_. - Butler Lampson's maxim in the UNIX community.
->
-> _Make it run, then make it right, then make it fast_. - Kent Beck's mantra in TDD.
-
-- Functions that always return a boolean value are called _predicates_
 
 
 
