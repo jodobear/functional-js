@@ -76,3 +76,276 @@ FP is:
 - Identifying an abstraction and building a fn for it.
 - Using existing fns and building more complex abstractions.
 - Passing existing fns to other fns to build even more complex abstractions.
+
+## CH02 First Class Functions & Applicative Programming
+
+### First Class Functions
+
+That's what makes a language functional to start with then you have static typing, pattern matching, immutability, purity and so on in varying degrees.
+
+**Defn**: It is one that can go anywhere a value can go - there can be few or no restrictions. E.g.
+
+- A number can be stored in a variable and so can a function:
+`var fortytwo = function() { return 42 };`
+- A number can be stored in an array slot and so can a function:
+`var fortytwos = [42, function() { return 42 }];`
+- A number can be stored in an object field and so can a function:
+`var fortytwos = {number: 42, fun: function() { return 42 }};`
+- A number can be created as needed and so can a function:
+`42 + (function() { return 42 })(); //=> 84`
+- A number can be passed to a function and so can a function:
+```js
+function weirdAdd(n, f) { return n + f() }
+
+weirdAdd(42, function() { return 42 }); //=> 84
+```
+- A number can be returned from a function and so can a function:
+```js
+return 42;
+
+return function() { return 42 };
+```
+
+The last two examples are of a _higher-order_ fn, they can do one or both of the following:
+
+- Take a function as an arg.
+- Return a fn. as a result.
+
+### Multiple Paradigms of JS
+
+- **Imperative programming**: Programming based around describing actions in detail
+- **Prototype-based OOP**: Programming based around prototypical objects and instances of them
+- **Metaprogramming**: Programming manipulating the basis of JavaScript’s execution model
+- Other programming paradigms that could be used, **class orientation** and **evented programming**.
+
+#### Imperative Programming
+
+An imperative programming style is categorized by its exquisite (and often infuriating) attention to the details of algorithm implementation. Further, imperative programs are often built around the direct manipulation and inspection of program state; e.g.
+```js
+var lyrics = [];
+
+for (var bottles = 99; bottles > 0; bottles--) {
+  lyrics.push(bottles + " bottles of beer on the wall");
+  lyrics.push(bottles + " bottles of beer");
+  lyrics.push("Take one down, pass it around");
+
+  if (bottles > 1) {
+    lyrics.push((bottles - 1) + " bottles of beer on the wall.");
+  }
+  else {
+    lyrics.push("No more bottles of beer on the wall!");
+  }
+}
+```
+Because imperative code operates at such a precise level of detail, they are often one-shot implementations or at best, difficult to reuse. Further, imperative languages are often restricted to a level of detail that is good for their compilers rather than for their programmers (Sokolowski 1991).
+
+Compare a functional approach:
+```js
+function lyricSegment(n) {
+  return _.chain([])
+    .push(n + " bottles of beer on the wall")
+    .push(n + " bottles of beer")
+    .push("Take one down, pass it around")
+    .tap(function(lyrics) {
+      if (n > 1) lyrics.push((n - 1) + " bottles of beer on the wall.");
+      else lyrics.push("No more bottles of beer on the wall!");
+    })
+    .value();
+}
+
+// this produces only 4 lines of the lyrics as
+lyricSegment(9);
+
+// the part that abstracts the assembly from the verse segments
+function song(start, end, lyricGen) {
+  return _.reduce(_.range(start, end, -1),
+    function(acc, n) {
+      return acc.concat(lyricGen(n));
+  }, []);
+}
+
+//using it as:
+song(99, 0, lyricSegment);
+```
+
+#### Prototype-based OOP
+
+JavaScript is very similar to Java or C# in that its constructor functions are classes (at least at the level of implementation details), but the method of use is at a lower level. Every instance in a Java program is generated from a class serving as its template,JavaScript instances use existing objects to serve as prototypes for specialized instances.[27] Object specialization, together with a built-in dispatch logic that routes calls down what’s called a prototype chain, is far more low-level than class-oriented programming, but is extremely elegant and powerful.
+
+Its self-reference semantics conflict with the notion of functional programming. Observe the following:
+```js
+var a = {name: "a", fun: function () { return this; }};
+
+a.fun(); //=> {name: "a", fun: ...};
+```
+You’ll notice that the self-reference this returned from the embedded fun function returns the object a itself. This is probably what you would expect. However, observe the following:
+```js
+var bFunc = function () { return this };
+var b = {name: "b", fun: bFunc};
+
+b.fun(); //=> some global object, probably Window
+```
+This is surprising. When a function is created outside of the context of an object instance, its this reference points to the global object. Therefore, when I later bound bFunc to the field `b.fun`, its reference was never updated to `b` itself.
+
+
+#### Fn vs Method
+
+A fn exists on it's own while a method is a fn created in the context of an object.
+
+#### Metaprogramming
+
+Related to prototype-based OOP and orthogonal to FP, but you can take some advantage of it. JS provides powerful facilities for metaprogramming.
+
+**Defn**: Programming occurs when you write code to do something and metaprogramming occurs when you write code that changes the way that something is interpreted, e.g.
+
+In the case of JS, the dynamic nature of the `this` reference can be exploited to perform a bit of metaprogramming. For example, observe the following constructor function:
+```js
+function Point2D(x, y) {
+  this._x = x;
+  this._y = y;
+}
+```
+When used with `new`, the `Point2D` function gives a new object instance with the proper fields set as you might expect;
+```js
+new Point2D(0, 1); //=> {_x: 0, _y: 1}`
+```
+However, the `Function.call` method can be used to metaprogram a derivation of the Point2D constructor’s behavior for a new Point3D type:
+```js
+function Point3D(x, y, z) {
+  Point2D.call(this, x, y);
+  this._z = z;
+}
+```
+And creating a new instance works like a champ:
+
+```js
+new Point3D(10, -1, 100); //=> {_x: 10, _y: -1, _z: 100}
+```
+
+### Applicative Programming
+
+**Defn**: the calling by function B of a function A, supplied as an argument to function B originally. Canonical examples `map`, `reduce` & `filter`
+```js
+_.map(collection, fn(elem) {});
+_.reduce(collection, fn(acc, val) {});
+_.filter(collection, fun(elem) {});
+```
+Somewhere inside these a call to the fn that's passed in occurs. Semantics of these fns can be defined in terms of that very relationship:
+
+- `_.map` calls a fn on every value in a collection in turn, returning a collection of the results.
+- `_.reduce` collects a composite vale from the incremental results of a function supplied with an accumulation value and each value in a collection, returning the accumulated result.
+- `_.filter` calls a predicate fn and grabs each vale where said predicate returned `true`, returning them in a new collection.
+
+### Collection-Centric Programming
+
+This is often coupled with FP. Fp is extremely useful for tasks requiring that some operation happen on many items in a collection, e.g.
+
+```js
+_.map({a: 1, b: 2}, _.identity); //=> [1, 2]
+_.map({a: 1, b: 2}, function(v,k) {
+  return [k,v];
+}); //=> [['a', 1], ['b', 2]]
+
+// _.map can also take a 3rd arg > the collection itself.
+_.map({a: 1, b: 2}, function(k, v, coll) {
+  return [k, v, _.keys(coll)];
+}) //=> [['a', 1, ['a', 'b']], ['b', 2, ['a', 'b']]]
+```
+The point of a collection-centric view, is to establish a consistent processing idiom so that we can reuse a comprehensive set of functions. As the great luminary Alan Perlis once stated:
+> It is better to have 100 functions operate on one data structure than 10 functions on 10 data structures.
+
+#### Other eg. of Applicative Programming:
+
+1. **`reduceRight`**: `_.reduce` evaluates from left to right while `_.reduceRight` evaluates from right to left. If the function supplied to the reduce siblings is associative, then they wind up returning the same values, but otherwise the difference in ordering can prove useful. Check e.g. for an illustration in `functions.js`.
+
+    The `_.reduceRight` function has further advantages in languages providing lazy evaluation, but since JavaScript is not such a language, evaluation order is the key factor (Bird 1988).
+
+2. **`find`**: it takes a collection and a predicate and returns the first element for which the predicate returns `true`; `_.find(['a', 'b', 3, 'd'], _.isNumber); //=> 3`.
+
+    Underscore provides these built-in fns: `_.isEqual`, `_.isEmpty`, `_.isElement`, `_.isArray`, `_.isObject`, `_.isArguments`, `_.isFunction`, `_.isString`, `_.isNumber`, `_.isFinite`, `_.isBoolean`, `_.isDate`, `_.isRegExp`, `_.isNaN`, `_.isNull`, and `_.isUndefined`.
+
+3. **`reject`**: opposite of `_.filter`; it takes a predicate and returns a collection of values that excludes values for which the predicate returned `true`.
+
+    This can also be achieved with a `complement` fn. `complement` is an example of a _higher-order_ fn:
+```js
+function complement(pred) {
+  return function() {
+    return !pred.apply(null, _.toArray(arguments))
+  }
+}
+// usage
+const a = ['a', 'b', 3, 'd'];
+_.filter(a, complement(_.isNumber)); //=> ['a', 'b', 'd']
+```
+
+4. **`all`**: The `_.all` function takes a collection and a predicate, and returns true if all of the elements within return true on the predicate check.
+
+5. **`any`**: The `_.any` function takes a collection and a predicate, and returns true if any of the elements within return true on the predicate check.
+
+6. **`sortBy`, `groupBy` & `countBy`**: All perform some action based on the result of a given criteria fn.
+```js
+// sortBy: return sorted collection based on the criteria determined by the passed fn:
+var people = [{name: "Rick", age: 30}, {name: "Jaka", age: 24}];
+
+_.sortBy(people, function(p) { return p.age });
+//=> [{name: "Jaka", age: 24}, {name: "Rick", age: 30}]
+
+// groupBy: returns an object where the keys are the criteria points returned by the function, and their associated values are the elements that matched.
+// extremely useful.
+var albums = [{title: "Sabbath Bloody Sabbath", genre: "Metal"},
+              {title: "Scientist", genre: "Dub"},
+              {title: "Undertow", genre: "Metal"}];
+
+_.groupBy(albums, function(a) { return a.genre });
+//=> {Metal:[{title:"Sabbath Bloody Sabbath", genre:"Metal"},
+//           {title:"Undertow", genre:"Metal"}],
+//    Dub:  [{title:"Scientist", genre:"Dub"}]}
+
+// countBy: returns an object with keys of the match criteria associated with its count:
+_.countBy(albums, function(a) { return a.genre }); //=> {Metal: 2, Dub: 1}
+```
+
+### Defining Own Applicative Fns
+
+Simple, define a fn that takes a fn and calls it. Following is NOT an applicative fn:
+```js
+function cat() {
+  let head = _.first(args);
+  if (existy(head)) return head.concat.apply(head, _.rest(args));
+  return [];
+}
+cat([[1, 2, 3], [4, 5, 6]]); //=> [1, 2, 3, 4, 5, 6]
+```
+Very useful but, `cat` doesn't expect to receive a fn as arg. Likewise, following isn't as well:
+```js
+function construct(head, tail) {
+  return cat([head], _.toArray(tail));
+}
+construct(42, [1,2,3]); //=> [42, 1, 2, 3]
+```
+While `construct` uses `cat` within it's body, it doesn't receive it as an argument, so it fails the applicative test. While following is:
+```js
+function mapcat(fn, coll) {
+  return cat.apply(null, _.map(coll, fn));
+}
+// usage
+mapcat(function(e) {
+  return construct(e, [","]);
+}, [1,2,3]);
+//=> [1, ",", 2, ",", 3, ","]
+```
+We can flatten it a level(take out the last entry?) creating `butLast` & `interpose` fns:
+```js
+function bytLast(coll) {
+  return _.toArray(coll).slice(0, -1);
+}
+
+function interpose (delimiter, coll) {
+  return butLast(mapcat(function (e) {
+    return construct(e, [delimiter]);
+  }, coll));
+}
+// usage
+interpose(",", [1, 2, 3]); //=> [1, ",", 2, ",", 3]
+```
+This is a key facet of FP: the gradual definition and use of discrete functionality built from lower-level functions. A chain of functions called one after the other, each gradually transforming the result from the last to reach a final solution.

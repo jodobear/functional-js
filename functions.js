@@ -8,10 +8,10 @@ function fail(thing) {
   throw new Error(thing);
 }
 function warn(thing) {
-  console.log(["WARNING:", thing].join(' '));
+  console.log(["WARNING:", thing].join(" "));
 }
 function note(thing) {
-  console.log(["NOTE:", thing].join(' '));
+  console.log(["NOTE:", thing].join(" "));
 }
 
 // Functions as units of behavior:
@@ -41,7 +41,7 @@ function comparator(pred) {
     if (pred(x, y)) return -1;
     else if (pred(y, x)) return 1;
     return 0;
-  }
+  };
 }
 
 function lessOrEqual(x, y) {
@@ -56,14 +56,18 @@ a.sort(comparator(lessOrEqual));
 // function to illustrate constructing data
 
 function lameCSV(str) {
-  return _.reduce(str.split('\n'),
-                  function(table, row) {
-                    table.push(_.map(row.split(','),
-                  function(col) {
-                    return col.trim()
-                  }));
-    return table;
-  }, [])
+  return _.reduce(
+    str.split("\n"),
+    function(table, row) {
+      table.push(
+        _.map(row.split(","), function(col) {
+          return col.trim();
+        })
+      );
+      return table;
+    },
+    []
+  );
 }
 
 const peopleTable = lameCSV("name,age,hair\nMerble,35,red\nBob,64,blonde");
@@ -84,20 +88,23 @@ function selectHair(table) {
 }
 // OR
 function selectHair(table) {
-  return _.rest(_.map(table, function(row) {
-    return nth(row, 2);
-  }));
+  return _.rest(
+    _.map(table, function(row) {
+      return nth(row, 2);
+    })
+  );
 }
 
 const mergeResults = _.zip;
-console.table(mergeResults(selectNames(peopleTable),
-                          selectHair(peopleTable)));
+console.table(mergeResults(selectNames(peopleTable), selectHair(peopleTable)));
 //=> [["Merble", "35"], ["Bob", "64"]]
 
 // extremely useful general functions
 // existy: distinguishes between null and undefined, and everything else.
 // function existy(x) { return x != null };  // as in book gives true for undefined. Had to add the following condition.
-function existy(x) { return x != null || x !== undefined };
+function existy(x) {
+  return x != null || x !== undefined;
+}
 // usage
 existy(null); //=> false
 
@@ -105,14 +112,16 @@ existy(undefined); //=> false
 
 existy({}.notHere); //=> false
 
-existy((function(){})()); //=> false
+existy((function() {})()); //=> false
 
 existy(0); //=> true
 
 existy(false); //=> true
 
 // truthy: if something should be considered a synonym for true.
-function truthy(x) { return x != false && existy(x) };
+function truthy(x) {
+  return x != false && existy(x);
+}
 // usage
 truthy(false); //=> false
 
@@ -120,7 +129,7 @@ truthy(undefined); //=> false
 
 truthy(0); //=> true
 
-truthy(''); //=> true // why??
+truthy(""); //=> true // why??
 
 truthy(); //=> true  // why??
 
@@ -128,3 +137,44 @@ truthy(); //=> true  // why??
 const a = [null, undefined, 1, 2, false];
 a.map(existy);
 a.map(truthy);
+
+
+// ch02
+// applicative programming
+function allOfRHS(/* funs */) {
+  return _.reduceRight(arguments, function(truth, f) {
+    return truth && f();
+  }, true);
+}
+
+function anyOf(/* funs */) {
+  return _.reduceRight(arguments, function(truth, f) {
+    return truth || f();
+  }, false);
+}
+// Example usages of allOf and anyOf are as follows:
+function T() { return true }
+function F() { return false }
+
+allOf(); //=> true
+allOf(T, T); //=> true
+allOf(T, T, T , T , F); //=> false
+
+anyOf(T, T, F); //=> true
+anyOf(T, T, F); //=> false
+anyOf(); //=> false
+anyOf(); //=> false
+
+
+// complement
+_.reject(['a', 'b', 3, 'd'], _.isNumber); //=> ['a', 'b', 'd']
+
+// same thing
+function complement(pred) {
+  return function() {
+    return !pred.apply(null, _.toArray(arguments))
+  }
+}
+// usage
+const a = ['a', 'b', 3, 'd'];
+_.filter(a, complement(_.isNumber)); //=> ['a', 'b', 'd']
