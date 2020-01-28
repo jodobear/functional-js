@@ -84,11 +84,72 @@ function song(start, end, lyricGen) {
 // console.log(_.each);
 
 
+function cat() {
+  var head = _.first(arguments);
+  if (existy(head)) return head.concat.apply(head, _.rest(arguments));
+  return [];
+}
+// console.log(cat([1, 2], [3, 4], [5, 6]));
+// console.log(cat([[1, 2], [3, 4], [5, 6]]));
+// console.log(cat([[1, 2], [3, 4], [5, 6]], [8, 9]));
+
+function construct(head, tail) {
+  return cat([head], _.toArray(tail));
+}
 
 
+// ch02: Data Thinking
+const books = [{title: "Chthon", author: "Anthony", ie: "01"},
+                {title: "Grendel", author: "Gardner", id: "02"},
+                {title: "After Dark"}]
+// console.log(_.pluck(books, 'author')); //=> ["Anthony", "Gardner", undefined]
+// console.log(_.pairs(books)); //=> [[index, {obj}], [i, {obj}], [i, {obj}]
 
+// Table-like data
+const library = [{title: "SICP", isbn: "0262010771", ed: 1},
+                {title: "SICP", isbn: "0262510871", ed: 2},
+                {title: "Joy of Clojure", isbn: "1935182641", ed: 1}];
 
+function project(table, keys) {
+  return _.map(table, function(obj) {
+    return _.pick.apply(null, construct(obj, keys));
+  });
+}
 
+function rename(obj, newNames) {
+  return _.reduce(newNames, function (newObj, newN, oldN)  {
+    if (_.has(obj, oldN)) {
+      newObj[newN] = obj[oldN]
+      return newObj;
+    }
+    return newObj;
+  },
+  _.omit.apply(null, construct(obj, _.keys(newNames))));
+}
+// usage
+// console.log(rename({a: 1, b: 2}, {a: 'AAA'})); //=> {AAA: 1, b: 2}
+
+function as(table, newNames) {
+  return _.map(table, function(obj) {
+    return rename(obj, newNames);
+  });
+}
+// console.log(project(as(library, {ed: 'edition'}), ['edition']));
+
+function restrict(table, pred) {
+  return _.reduce(table, function(newTable, obj) {
+    if(truthy(pred(obj))) return newTable;
+    else return _.without(newTable, obj);
+  }, table);
+}
+
+console.log(restrict(
+  project(as(library, {ed: 'edition'}),
+  ['title', 'isbn', 'edition']),
+  function(book) {
+    return book.edition > 1;
+  }
+));
 
 
 

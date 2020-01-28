@@ -2,7 +2,7 @@
 
 ## Ch 01 Introducing Functional JS
 
-- `apply`, `call`, arguments together make JS extremely flexible.
+- `apply`, `call`, `arguments` together make JS extremely flexible.
 - `splat` a fn that takes a function and returns another function that takes an array and calls the og fn with apply, so it's elements serve as its arguments:
 
 ```js
@@ -266,7 +266,7 @@ The point of a collection-centric view, is to establish a consistent processing 
 
 3. **`reject`**: opposite of `_.filter`; it takes a predicate and returns a collection of values that excludes values for which the predicate returned `true`.
 
-    This can also be achieved with a `complement` fn. `complement` is an example of a _higher-order_ fn:
+    This can also be achieved with a `complement` fn, an example of a _higher-order_ fn:
 ```js
 function complement(pred) {
   return function() {
@@ -278,11 +278,13 @@ const a = ['a', 'b', 3, 'd'];
 _.filter(a, complement(_.isNumber)); //=> ['a', 'b', 'd']
 ```
 
-4. **`all`**: The `_.all` function takes a collection and a predicate, and returns true if all of the elements within return true on the predicate check.
+**NOTE:** Passing `null`<a name="apply-null"></a> as the first argument to `apply` is worth a mention. Recall that the first argument to `apply` is the “target” object setting the this reference inside the called function. Since we3 can’t know what the target object should be, or even if it’s needed at all, we use `null` to signal that this should just refer to the global object.
 
-5. **`any`**: The `_.any` function takes a collection and a predicate, and returns true if any of the elements within return true on the predicate check.
+1. **`all`**: The `_.all` function takes a collection and a predicate, and returns true if all of the elements within return true on the predicate check.
 
-6. **`sortBy`, `groupBy` & `countBy`**: All perform some action based on the result of a given criteria fn.
+2. **`any`**: The `_.any` function takes a collection and a predicate, and returns true if any of the elements within return true on the predicate check.
+
+3. **`sortBy`, `groupBy` & `countBy`**: All perform some action based on the result of a given criteria fn.
 ```js
 // sortBy: return sorted collection based on the criteria determined by the passed fn:
 var people = [{name: "Rick", age: 30}, {name: "Jaka", age: 24}];
@@ -310,11 +312,14 @@ _.countBy(albums, function(a) { return a.genre }); //=> {Metal: 2, Dub: 1}
 Simple, define a fn that takes a fn and calls it. Following is NOT an applicative fn:
 ```js
 function cat() {
-  let head = _.first(args);
-  if (existy(head)) return head.concat.apply(head, _.rest(args));
+  let head = _.first(arguments); // arguments in JS is a keyword
+  if (existy(head)) return head.concat.apply(head, _.rest(arguments));
   return [];
 }
-cat([[1, 2, 3], [4, 5, 6]]); //=> [1, 2, 3, 4, 5, 6]
+cat([1, 2], [3, 4], [5, 6]); //=> [1, 2, 3, 4, 5, 6]  // notice this is just 1 element, a list of lists.
+cat([[1, 2], [3, 4], [5, 6]]); //=> [[1, 2], [3, 4], [5, 6]]
+cat([[1, 2], [3, 4], [5, 6]], [8, 9]); //=> [[1, 2], [3, 4], [5, 6], 8, 9]
+
 ```
 Very useful but, `cat` doesn't expect to receive a fn as arg. Likewise, following isn't as well:
 ```js
@@ -348,4 +353,62 @@ function interpose (delimiter, coll) {
 // usage
 interpose(",", [1, 2, 3]); //=> [1, ",", 2, ",", 3]
 ```
+**NOTE:** `arguments` in JS is a keyword. Every JavaScript function can access a local value named `arguments` that is an array-like structure holding the values that the function was called with. Having access to `arguments` is surprisingly powerful, and is used to amazing effect in JavaScript in the wild.
+
 This is a key facet of FP: the gradual definition and use of discrete functionality built from lower-level functions. A chain of functions called one after the other, each gradually transforming the result from the last to reach a final solution.
+
+### Data Thinking
+
+`_.keys`,`_.values` & `_.pluck`: (returns array of values at given key from the object). All these fns deconstruct given objects into arrays.
+
+```js
+const books = [{title: "Chthon", author: "Anthony", ie: "01"},
+                {title: "Grendel", author: "Gardner", id: "02"},
+                {title: "After Dark"}]
+console.log(_.pluck(books, 'author')); //=> ["Anthony", "Gardner", undefined]
+console.log(_.pairs(books)); //=> [[index, {obj}], [i, {obj}], [i, {obj}]
+```
+Another way of viewing a JS object is an an array of arrays, each holding key and value pairs and `_.pairs` turns it into a nested array
+
+Other fns: `_.object`, `_.invert`, `_.defaults`, `_.omit`, `_pick`..
+
+e.g. of chaining fns:
+```js
+_.keys(_.invert({a: 138, b: 9})); //=> ['9', '138']
+
+_.pluck(_.map(books, function(obj) {
+  return _.defauts(obj, {author: "Unknown"})
+  }),
+'author');
+//=> ["Anthony", "Gardner", "Unknown"]
+
+var person = {name: "Romy", token: "j3983ij", password: "tigress"};
+
+var info = _.omit(person, 'token', 'password');
+info; //=> {name: "Romy"}
+
+var creds = _.pick(person, 'token', 'password');
+creds; //=> {password: "tigress", token: "j3983ij"};
+```
+`_.findWhere`: returns 1st match, `_.where`: returns all matches;
+```js
+var library = [{title: "SICP", isbn: "0262010771", ed: 1},
+               {title: "SICP", isbn: "0262510871", ed: 2},
+               {title: "Joy of Clojure", isbn: "1935182641", ed: 1}];
+
+_.findWhere(library, {title: "SICP", ed: 2});
+//=> {title: "SICP", isbn: "0262510871", ed: 2}
+
+_.where(library, {title: "SICP"});
+//=> [{title: "SICP", isbn: "0262010771", ed: 1},
+//    {title: "SICP", isbn: "0262510871", ed: 2}]
+```
+
+- This way of using data points to a very important data abstraction: **the table**.
+- Using _Underscore_, gives similar experience as to using SQL.
+- The functions created in this section implement a subset of the relational algebra on which all SQL engines are built (Date 2003) - not deep but, pseudo-SQL level.
+
+#### "Table-like" Data
+
+- I understand the `null` argument that's paased in fns, it's the host/target where the output of the fn call should return it's value to.
+- `reduce` mechanics are a bit more clear.

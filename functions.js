@@ -20,7 +20,7 @@ function nth(data, index) {
   if (!_.isNumber(index)) fail("Expected number a index.");
   if (!_.isIndexed(data)) fail("Expected an array or string");
   if (index < 0 || index > data.length - 1) fail("Index out of bounds.");
-  return data[index];
+  else return data[index];
 }
 
 function isIndexed(data) {
@@ -40,7 +40,7 @@ function comparator(pred) {
   return function(x, y) {
     if (pred(x, y)) return -1;
     else if (pred(y, x)) return 1;
-    return 0;
+    else return 0;
   };
 }
 
@@ -141,7 +141,7 @@ a.map(truthy);
 
 // ch02
 // applicative programming
-function allOfRHS(/* funs */) {
+function allOf(/* funs */) {
   return _.reduceRight(arguments, function(truth, f) {
     return truth && f();
   }, true);
@@ -178,3 +178,122 @@ function complement(pred) {
 // usage
 const a = ['a', 'b', 3, 'd'];
 _.filter(a, complement(_.isNumber)); //=> ['a', 'b', 'd']
+
+
+function cat() {
+  var head = _.first(arguments);
+  if (existy(head)) return head.concat.apply(head, _.rest(arguments));
+  else return [];
+}
+// console.log(cat([1, 2], [3, 4], [5, 6]));
+// console.log(cat([[1, 2], [3, 4], [5, 6]]));
+// console.log(cat([[1, 2], [3, 4], [5, 6]], [8, 9]));
+
+function construct(head, tail) { // tail needs to be an array
+  return cat([head], _.toArray(tail));
+}
+
+function mapcat(fun, coll) {
+  return cat.apply(null, _.map(coll, fun));
+}
+
+//usage
+mapcat(function(e) {
+  return construct(e, [","]);
+}, [1, 2, 3])
+//=> [1, ",", 2, ",", 3, ","]
+
+function bytLast(coll) {
+  return _.toArray(coll).slice(0, -1);
+}
+
+function interpose (delimiter, coll) {
+  return butLast(mapcat(function (e) {
+    return construct(e, [delimiter]);
+  }, coll));
+}
+// usage
+interpose(",", [1, 2, 3]); //=> [1, ",", 2, ",", 3]
+
+
+// ch02: Data Thinking
+// Table-like Data
+const library = [{title: "SICP", isbn: "0262010771", ed: 1},
+                {title: "SICP", isbn: "0262510871", ed: 2},
+                {title: "Joy of Clojure", isbn: "1935182641", ed: 1}];
+
+// to preserve table-like structure
+function project(table, keys) { // keys need to be an array
+  return _.map(table, function(obj) {
+    return _.pick.apply(null, construct(obj, keys));
+  });
+}
+// usage
+const editionResults = project(library, ['title', 'isbn']);
+editionResults;
+//=> [{isbn: "0262010771", title: "SICP"},
+//    {isbn: "0262510871", title: "SICP"},
+//    {isbn: "1935182641", title: "Joy of Clojure"}];
+
+const isbnResults = project(editionResults, ['isbn']);
+
+isbnResults;
+//=> [{isbn: "0262010771"},{isbn: "0262510871"},{isbn: "1935182641"}]
+
+// we can break that structure and pull out only the desired data:
+_.pluck(editionResults, 'isbn');
+//=> ["0262010771", "0262510871", "1935182641"]
+
+
+// fns to work against(on) a table
+function rename(obj, newNames) {
+  return _.reduce(newNames, function (newObj, newN, oldN)  {
+    if (_.has(obj, oldN)) {
+      newObj[newN] = obj[oldN]
+      return newObj;
+    }
+    else return newObj;
+  },
+  _omit.apply(null, construct(obj, _.keys(newNames))));
+}
+// usage 'a' & a both work
+rename({a: 1, b: 2}, {'a': 'AAA'}); //=> {AAA: 1, b: 2}
+
+// using rename to work against the table abstraction:
+function as(table, newNames) {
+  return _.map(table, function(obj) {
+    return rename(obj, newNames);
+  });
+}
+// usage
+as(library, {ed: 'edition'});
+//=> [{title: "SICP", isbn: "0262010771", edition: 1},
+//    {title: "SICP", isbn: "0262510871", edition: 2},
+//    {title: "Joy of Clojure", isbn: "1935182641", edition: 1}]
+
+// chaining project & as
+project(as(library, {ed: 'edition'}), ['edition']);
+
+// implementing SQL's WHERE, naming restrict
+function restrict(table, pred) {
+  return _.reduce(table, function(newTable, obj) {
+    if(truthy(pred(obj))) return newTable;
+    else return _.without(newTable, obj);
+  }, table);
+}
+// usage
+restrict(library, function(book) {
+  return book.ed > 1;
+});
+//=> [{title: "SICP", isbn: "0262510871", ed: 2}]
+
+// chaining restrict
+restrict(
+  project(
+    as(library, {ed: 'edition'}),
+    ['title', 'isbn', 'edition']),
+  function(book) {
+    return book.edition > 1;
+  }
+);
+//=> [{title: "SICP", isbn: "0262510871", edition: 2},]
